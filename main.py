@@ -41,9 +41,18 @@ def registerPage():
             return '<script>alert("fuck off")</script>'
    
 
-@app.route('/login')
+@app.route('/login', methods = ['GET', 'POST'])
 def login():
-   return render_template('login.html')
+    if request.method == 'POST':
+        result = request.form
+        email = result.get("email")
+        password = result.get("pass")
+        control = db.users.find_one({"email": email, "password": password})
+        if control != None:
+            return render_template('profile.html', result=control)
+        else:
+            return '<script>alert("fuck off")</script>'
+    return render_template('login.html')
 
 @app.route('/cookieform')
 def cookieForm():
@@ -70,8 +79,15 @@ def getcookie():
     name = request.cookies.get('userId')
     return '<h1> sizin cookiniz :' + name + '</h1>'
 
-
-
-
+@app.route('/update_profile', methods = ['POST'])
+def update_profile():
+    if request.method == 'POST':
+        result = request.form
+        email = result.get('email')
+        gender = result.get('gender')
+        username = result.get('username')
+        dbresult = db.users.update_one({"email": email},{"$set": {"username": username, "gender": gender}})
+        personresult = db.users.find_one({"email": email})
+        return render_template('profile.html', result=personresult)
 if "__main__" == __name__:
     app.run()
