@@ -1,7 +1,11 @@
+import os 
+import uuid
+from asyncio.windows_events import NULL
 from flask import Flask, render_template, request, redirect, jsonify
 from flask.helpers import make_response, url_for 
 from pymongo import MongoClient
 app = Flask(__name__)
+
 # Home sayfası
 # Register sayfası
 # Login Sayfası
@@ -12,6 +16,7 @@ app = Flask(__name__)
 # Yüklenen fotoğrafı yüklenen kişinin ekranında gözükücek
 
 ##############################################################################################################################
+app.config["UPLOAD_FOLDER"] = "C:\\Users\\202\\Desktop\\Flask-website\\UploadedFiles"
 app.config["MONGO_URI"] = "mongodb://localhost:27017"
 client = MongoClient('localhost', 27017)
 db = client['FlaskWebDB']
@@ -49,35 +54,14 @@ def login():
         password = result.get("pass")
         control = db.users.find_one({"email": email, "password": password})
         if control != None:
-            return render_template('profile.html', result=control)
+            resp = make_response(render_template('profile.html', result=control, info = "JPG or PNG no larger than 5 MB"))
+            resp.set_cookie('userID', email)
+            return resp 
+            return render_template('profile.html', result=control, info = "JPG or PNG no larger than 5 MB")
         else:
             return '<script>alert("fuck off")</script>'
     return render_template('login.html')
 
-@app.route('/cookieform')
-def cookieForm():
-    return render_template('cookiewriter.html')
-
-
-@app.route('/setcookie', methods = ['POST'])
-def setcookie():
-    if request.method == 'POST':
-        user = request.form['userId']
-        resp = make_response(redirect('getcookie'))
-        resp.set_cookie('userId',user)
-        return resp
-    
-@app.route('/add')
-def add():
-    db.users.insert_one({"username": "admin", "password": "admin"})
-    return jsonify(message = 'success')
-
-
-
-@app.route('/getcookie')
-def getcookie():
-    name = request.cookies.get('userId')
-    return '<h1> sizin cookiniz :' + name + '</h1>'
 
 @app.route('/update_profile', methods = ['POST'])
 def update_profile():
@@ -89,5 +73,23 @@ def update_profile():
         dbresult = db.users.update_one({"email": email},{"$set": {"username": username, "gender": gender}})
         personresult = db.users.find_one({"email": email})
         return render_template('profile.html', result=personresult)
+
+@app.route("/upload", methods = ['POST'])
+def upload_file():
+    if request.method == 'POST':
+        file = request.files['file']
+        photouid = uuid.uuid4()
+        photouid = str(photouid)+".jpg"
+        file.save(os.path.join(app.config["UPLOAD_FOLDER"], photouid))
+        user = request.cookies.get('userID')
+        personalresult = db.users.find_one({"email": user })
+        photo = db.users.update_one({"email": user}, {"$set":{"photoName": photouid}})
+        return render_template('profile.html', result= personalresult, info = "Profile foto eklendi")
+
+
+
+
+
+
 if "__main__" == __name__:
-    app.run()
+    app.run(debug=True)
