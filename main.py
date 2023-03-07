@@ -3,6 +3,7 @@ import uuid
 from asyncio.windows_events import NULL
 from flask import Flask, render_template, request, redirect, jsonify
 from flask.helpers import make_response, url_for 
+from flask_mail import Mail, Message 
 from pymongo import MongoClient
 app = Flask(__name__)
 
@@ -16,10 +17,21 @@ app = Flask(__name__)
 # Yüklenen fotoğrafı yüklenen kişinin ekranında gözükücek
 
 ##############################################################################################################################
-app.config["UPLOAD_FOLDER"] = "C:\\Users\\202\\Desktop\\Flask-website\\UploadedFiles"
+app.config["UPLOAD_FOLDER"] = "static\\UploadedFiles"
 app.config["MONGO_URI"] = "mongodb://localhost:27017"
 client = MongoClient('localhost', 27017)
 db = client['FlaskWebDB']
+mail = Mail(app)
+mail.init_app(app)
+
+app.config['MAIL_SERVER'] = 'smpt.yandex.com.tr'
+app.config['MAIL_PORT'] = '465'
+app.config['MAIL_USERNAME'] = 'pythonogrencileri@yandex.com'
+app.config['MAIL_PASSWORD'] = 'ifkbzunnuiydoqqe'
+app.config['MAIL_USE_TLS'] = True
+
+
+
 
 @app.route('/home')
 @app.route('/')
@@ -78,15 +90,23 @@ def update_profile():
 def upload_file():
     if request.method == 'POST':
         file = request.files['file']
-        photouid = uuid.uuid4()
-        photouid = str(photouid)+".jpg"
+        split_tup = os.path.splitext(file.filename)
+        extension = split_tup[1]
+        photouid = uuid.uuid4() 
+        photouid = str(photouid) + extension
         file.save(os.path.join(app.config["UPLOAD_FOLDER"], photouid))
         user = request.cookies.get('userID')
         personalresult = db.users.find_one({"email": user })
         photo = db.users.update_one({"email": user}, {"$set":{"photoName": photouid}})
         return render_template('profile.html', result= personalresult, info = "Profile foto eklendi")
 
+###Mail###
 
+@app.route("/mailsender")
+def mailSender():
+    msg = ("HİTLER WAS RİGHT",
+
+           )
 
 
 
