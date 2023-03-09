@@ -1,6 +1,5 @@
 import os 
 import uuid
-from asyncio.windows_events import NULL
 from flask import Flask, render_template, request, redirect, jsonify
 from flask.helpers import make_response, url_for 
 from flask_mail import Mail, Message 
@@ -22,15 +21,17 @@ app.config["MONGO_URI"] = "mongodb://localhost:27017"
 client = MongoClient('localhost', 27017)
 db = client['FlaskWebDB']
 mail = Mail(app)
+
+
+app.config['MAIL_SERVER']='smtp.yandex.com.tr'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'HTTP.403@yandex.com'
+app.config['MAIL_PASSWORD'] = 'Retropy18%'
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+
+
 mail.init_app(app)
-
-app.config['MAIL_SERVER'] = 'smpt.yandex.com.tr'
-app.config['MAIL_PORT'] = '465'
-app.config['MAIL_USERNAME'] = 'pythonogrencileri@yandex.com'
-app.config['MAIL_PASSWORD'] = 'ifkbzunnuiydoqqe'
-app.config['MAIL_USE_TLS'] = True
-
-
 
 
 @app.route('/home')
@@ -52,8 +53,10 @@ def registerPage():
        password = result.get("password")
        control = db.users.find_one({"email": email})
        if control == None:
-            db.users.insert_one({"name": name, "birthdate": birthdate, "gender": gender, "email": email, "password": password})
-            return redirect("login")
+            activisionuid = uuid.uuid4()
+            db.users.insert_one({"name": name, "birthdate": birthdate, "gender": gender, "email": email, "password": password, "code": activisionuid.__str__(), "isTrue": False})
+            url = "/mailS/" + email + "/"+ activisionuid.__str__()
+            return redirect(url)
        else:
             return '<script>alert("fuck off")</script>'
    
@@ -65,7 +68,7 @@ def login():
         email = result.get("email")
         password = result.get("pass")
         control = db.users.find_one({"email": email, "password": password})
-        if control != None:
+        if control != None and control["isTrue"]:
             resp = make_response(render_template('profile.html', result=control, info = "JPG or PNG no larger than 5 MB"))
             resp.set_cookie('userID', email)
             return resp 
@@ -102,14 +105,22 @@ def upload_file():
 
 ###Mail###
 
-@app.route("/mailsender")
-def mailSender():
-    msg = ("HİTLER WAS RİGHT",
+@app.route("/mailS/<email>/<code>")
+def mailSenderr(email, code):
+    msg = Message("Hitler Was Right",
+    sender="HTTP.403@yandex.com",
+    recipients=[email]
+)
+    msg.body = f"Clik it DUMASS http://127.0.0.1:5000/mailS/" + code
+    mail.send(msg)
+    return "Mesaj gönderildi"
 
-           )
 
 
-
+@app.route("/code_check/<email>/<code>")
+def codeChecker(email,code):
+    code = db.users.update_one({"code": code}, {"$set":{"isTrue": True}})
+    return redirect("/login")
 
 if "__main__" == __name__:
-    app.run(debug=True)
+    app.run(host= "0.0.0.0")
